@@ -2,6 +2,9 @@ import React from "react";
 import { render } from "ink-testing-library";
 import { App } from "../App.tsx";
 
+// This is a demo-flow test — force demo mode so it never depends on a real saved config.
+process.env.COMMITRON_MODE = "demo";
+
 const ESC = String.fromCharCode(27);
 const ARROW_DOWN = ESC + "[B";
 const ENTER = "\r";

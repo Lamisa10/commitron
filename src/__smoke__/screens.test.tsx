@@ -11,6 +11,7 @@ import { InitScreen } from "../components/InitScreen.tsx";
 // Redirect config writes to a throwaway file so the real config is untouched.
 const TEST_CONFIG = join(tmpdir(), "commitron-test-config.json");
 process.env.COMMITRON_CONFIG = TEST_CONFIG;
+if (existsSync(TEST_CONFIG)) unlinkSync(TEST_CONFIG); // start from a clean slate
 
 const ARROW_DOWN = "[B";
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));

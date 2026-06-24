@@ -80,7 +80,7 @@ export function CommitScreen() {
       />
 
       {cfg.requestedMode === "live" && !cfg.hasKey && (
-        <Text color={colors.yellow}>⚠ No OPENAI_API_KEY found — running in demo mode.</Text>
+        <Text color={colors.yellow}>⚠ No API key saved — open Setup to add one. Running in demo mode.</Text>
       )}
 
       {diff && (

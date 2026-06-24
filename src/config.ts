@@ -67,8 +67,8 @@ export function loadConfig(): Config {
         ? "live"
         : "demo";
 
-  // Key lookup order: environment first, then the saved config.
-  const apiKey = process.env.OPENAI_API_KEY?.trim() || file.openaiKey?.trim() || undefined;
+  // The API key lives only in the config file.
+  const apiKey = file.openaiKey?.trim() || undefined;
   const hasKey = Boolean(apiKey);
   const mode: Mode = requestedMode === "live" && hasKey ? "live" : "demo";
 
