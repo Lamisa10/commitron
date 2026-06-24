@@ -107,5 +107,5 @@ export const sampleError = {
 export const defaultConfig = {
   model: "gpt-4o-mini",
   commitStyle: "Conventional Commits",
-  configPath: "~/.commitronrc",
+  configPath: "~/.config/commitron/config.json",
 };
