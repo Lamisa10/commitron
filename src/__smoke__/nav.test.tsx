@@ -12,6 +12,7 @@ import { executeGitPlan } from "../services/git-execution.ts";
 import { getPlanExecutionPolicy } from "../services/git-policy.ts";
 import { getRepositoryContext } from "../services/git.ts";
 import type { ScreenId } from "../theme.ts";
+import { normalizeTerminalFrame } from "./terminal-frame.ts";
 
 // This is a demo-flow test — force demo mode so it never depends on a real saved config.
 process.env.COMMITRON_MODE = "demo";
@@ -32,11 +33,12 @@ async function run() {
   // 1. Home renders with the menu + value prop.
   const { lastFrame, stdin, unmount } = render(<App />);
   await wait(60);
-  check("home shows value prop", /Talk to Git in plain English/.test(lastFrame()!));
-  check("home shows menu items", /Commit/.test(lastFrame()!) && /Branch/.test(lastFrame()!));
+  const homeFrame = normalizeTerminalFrame(lastFrame());
+  check("home shows value prop", /Talk to Git in plain English/.test(homeFrame));
+  check("home shows menu items", /Commit/.test(homeFrame) && /Branch/.test(homeFrame));
   check(
     "layout shows working directory",
-    lastFrame()!.includes("⌂") && lastFrame()!.includes(basename(process.cwd())),
+    homeFrame.includes("⌂") && homeFrame.includes(basename(process.cwd())),
   );
 
   // 2. Enter opens the first item (Ask).
@@ -58,12 +60,18 @@ async function run() {
   // 4. Confirm -> executed result.
   stdin.write("y");
   await wait(80);
-  check("Ask confirms execution", /command executed/.test(lastFrame()!));
+  check(
+    "Ask confirms execution",
+    /command executed/.test(normalizeTerminalFrame(lastFrame())),
+  );
 
   // 5. Esc returns home, navigate to Commit (down once) and open it.
   stdin.write(ESC);
   await wait(60);
-  check("Esc returns home", /Talk to Git in plain English/.test(lastFrame()!));
+  check(
+    "Esc returns home",
+    /Talk to Git in plain English/.test(normalizeTerminalFrame(lastFrame())),
+  );
   stdin.write(ARROW_DOWN);
   await wait(40);
   stdin.write(ENTER);
@@ -80,7 +88,7 @@ async function run() {
     <HomeScreen mode="live" onSelect={(id) => { selectedLiveScreen = id; }} />,
   );
   await wait(40);
-  const liveHomeFrame = liveHome.lastFrame()!;
+  const liveHomeFrame = normalizeTerminalFrame(liveHome.lastFrame());
   check("Live home exposes every tool", !/DEMO ONLY/.test(liveHomeFrame));
   check("Live home initially selects Ask", /›\s+✦\s+Ask/.test(liveHomeFrame));
   liveHome.stdin.write(ENTER);

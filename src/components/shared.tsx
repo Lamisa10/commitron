@@ -77,9 +77,11 @@ export function FeatureModeNotice({
 }) {
   return (
     <Box marginBottom={1}>
-      <Text color={mode === "live" ? colors.cyan : colors.yellow} bold>
-        ◇ {mode === "live" ? "LIVE" : "DEMO ONLY"}
-      </Text>
+      <Box flexShrink={0}>
+        <Text color={mode === "live" ? colors.cyan : colors.yellow} bold>
+          ◇ {mode === "live" ? "LIVE" : "DEMO ONLY"}
+        </Text>
+      </Box>
       <Text color={colors.faint}>
         {" · "}
         {mode === "live" ? liveText : demoText}

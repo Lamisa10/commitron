@@ -1,7 +1,17 @@
 {
   "name": "commitron",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Commitron — AI-Powered Git Commit & Branch Assistant (TUI prototype)",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lamisa10/commitron.git"
+  },
+  "homepage": "https://github.com/Lamisa10/commitron#readme",
+  "bugs": {
+    "url": "https://github.com/Lamisa10/commitron/issues"
+  },
   "type": "module",
   "bin": {
     "commitron": "src/cli.tsx"
@@ -9,12 +19,19 @@
   "scripts": {
     "start": "bun run src/cli.tsx",
     "start:node": "tsx src/cli.tsx",
+    "demo:prepare": "bun run scripts/prepare-demo-repo.ts",
     "dev": "bun run src/cli.tsx",
+    "check": "bunx tsc --noEmit",
+    "verify": "bun run check && bun run smoke",
+    "build:npm": "bun run scripts/build-npm-package.ts",
+    "pack:npm": "bun run scripts/pack-npm.ts",
+    "publish:npm": "bun run scripts/publish-npm.ts",
     "smoke": "bun run src/__smoke__/run.ts",
     "smoke:nav": "bun run src/__smoke__/nav.test.tsx",
     "smoke:live": "bun run src/__smoke__/live-features.test.tsx",
     "smoke:commit-stack": "bun run src/__smoke__/commit-stack.test.tsx",
-    "smoke:screens": "bun run src/__smoke__/screens.test.tsx"
+    "smoke:screens": "bun run src/__smoke__/screens.test.tsx",
+    "smoke:demo-repo": "bun run src/__smoke__/demo-repo.test.ts"
   },
   "dependencies": {
     "ink": "^5.1.0",

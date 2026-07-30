@@ -5,6 +5,7 @@ const smokeFiles = [
   "src/__smoke__/live-features.test.tsx",
   "src/__smoke__/commit-stack.test.tsx",
   "src/__smoke__/screens.test.tsx",
+  "src/__smoke__/demo-repo.test.ts",
 ];
 
 for (const file of smokeFiles) {

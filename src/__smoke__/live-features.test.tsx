@@ -12,6 +12,7 @@ import { ExplainScreen } from "../components/ExplainScreen.tsx";
 import { ScrollViewport } from "../components/ScrollViewport.tsx";
 import { getExplainableDiff } from "../services/git.ts";
 import { sanitizeTerminalText } from "../utils/terminal-text.ts";
+import { normalizeTerminalFrame } from "./terminal-frame.ts";
 
 const ENTER = "\r";
 const ESC = String.fromCharCode(27);
@@ -55,7 +56,7 @@ async function run() {
       }
     />,
   );
-  const safeErrorFrame = unsafeErrorView.lastFrame()!;
+  const safeErrorFrame = normalizeTerminalFrame(unsafeErrorView.lastFrame());
   check(
     "Fix Error keeps pasted output inside its frame",
     !/[\u001B\r]/.test(safeErrorFrame) &&
