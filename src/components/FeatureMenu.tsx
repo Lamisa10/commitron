@@ -12,7 +12,7 @@ function isAvailable(item: MenuItem, mode: Mode): boolean {
   return mode === "demo" || item.availableInLive;
 }
 
-/** Feature picker that keeps demo-only rows visible while skipping them in live mode. */
+/** Feature picker that can keep future demo-only rows visible but unselectable in live mode. */
 export function FeatureMenu({ mode, onSelect }: FeatureMenuProps) {
   const availableItems = menu.filter((item) => isAvailable(item, mode));
   const [selectedId, setSelectedId] = useState<ScreenId>(

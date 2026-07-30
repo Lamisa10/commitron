@@ -3,6 +3,7 @@ import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { colors, border } from "../theme.ts";
 import type { DiffLine } from "../data/mock.ts";
+import type { Mode } from "../config.ts";
 
 /** Animated "AI is thinking" line shown during the simulated round-trip. */
 export function Thinking({ label = "Asking the model" }: { label?: string }) {
@@ -62,4 +63,27 @@ export function CommandLine({ cmd, color = colors.cyan }: { cmd: string; color?:
 /** A hint shown to nudge the user toward the next action. */
 export function Hint({ children }: { children: React.ReactNode }) {
   return <Text color={colors.faint}>{children}</Text>;
+}
+
+/** Identifies whether a feature is using real services or deterministic demo data. */
+export function FeatureModeNotice({
+  mode,
+  liveText,
+  demoText,
+}: {
+  mode: Mode;
+  liveText: string;
+  demoText: string;
+}) {
+  return (
+    <Box marginBottom={1}>
+      <Text color={mode === "live" ? colors.cyan : colors.yellow} bold>
+        ◇ {mode === "live" ? "LIVE" : "DEMO ONLY"}
+      </Text>
+      <Text color={colors.faint}>
+        {" · "}
+        {mode === "live" ? liveText : demoText}
+      </Text>
+    </Box>
+  );
 }

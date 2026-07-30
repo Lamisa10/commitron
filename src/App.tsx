@@ -39,7 +39,7 @@ export function App() {
   const footer =
     screen === "home"
       ? mode === "live"
-        ? "↑↓ available tools · Enter open · Switch to demo in Setup to unlock all · q quit"
+        ? "↑↓ navigate · Enter open · all tools are live · q quit"
         : "↑↓ navigate · Enter open · q quit"
       : "Esc back to menu · q from home to quit";
 

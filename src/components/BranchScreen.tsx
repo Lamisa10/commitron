@@ -1,33 +1,115 @@
-import React, { useState } from "react";
-import { Box, Text } from "ink";
-import TextInput from "ink-text-input";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Box, Text, useInput } from "ink";
 import Gradient from "ink-gradient";
-import { ScreenTitle } from "./Layout.tsx";
-import { Thinking, CommandLine, Hint } from "./shared.tsx";
-import { useFakeAI } from "../hooks/useFakeAI.ts";
-import { branchExamples, defaultBranchSuggestion } from "../data/mock.ts";
+import SelectInput from "ink-select-input";
+import TextInput from "ink-text-input";
+import { loadConfig } from "../config.ts";
+import { useGitPlanExecution } from "../hooks/useGitPlanExecution.ts";
+import { suggestBranchNames } from "../services/branch.ts";
+import { isGitServiceError } from "../services/git.ts";
+import type { PlannedGitCommand } from "../types/git-plan.ts";
 import { colors, gradients } from "../theme.ts";
+import { FeatureErrorView, type FeatureError } from "./FeatureErrorView.tsx";
+import { GitPlanExecutionView } from "./GitPlanExecutionView.tsx";
+import { ScreenTitle } from "./Layout.tsx";
+import {
+  CommandLine,
+  FeatureModeNotice,
+  Hint,
+  Thinking,
+} from "./shared.tsx";
+import { friendlyModelError } from "./feature-errors.ts";
 
-type Stage = "input" | "thinking" | "result";
+type Stage = "input" | "thinking" | "choose" | "plan" | "demo-done" | "error";
 
-/** Turns a short description into a valid kebab-case branch name and checks it out. */
-export function BranchScreen() {
-  const [desc, setDesc] = useState("");
+const demoDelayMs = 1_400;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+interface BranchScreenProps {
+  suggestNames?: typeof suggestBranchNames;
+}
+
+/** Generates validated branch names and creates the selected branch after confirmation. */
+export function BranchScreen({
+  suggestNames = suggestBranchNames,
+}: BranchScreenProps) {
+  const cfg = useMemo(() => loadConfig(), []);
+  const [description, setDescription] = useState("");
   const [stage, setStage] = useState<Stage>("input");
-  const [name, setName] = useState(defaultBranchSuggestion);
-  const { run } = useFakeAI(1400);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedName, setSelectedName] = useState("");
+  const [error, setError] = useState<FeatureError | null>(null);
+  const requestVersion = useRef(0);
+  const commands: PlannedGitCommand[] | null = selectedName
+    ? [{ args: ["switch", "-c", selectedName] }]
+    : null;
+  const execution = useGitPlanExecution(
+    cfg.mode,
+    commands,
+    stage === "plan",
+  );
 
-  const submit = (value: string) => {
-    if (!value.trim()) return;
-    // Match a known example, else fall back to the default suggestion.
-    const key = Object.keys(branchExamples).find((k) =>
-      value.toLowerCase().includes(k.split(" ")[1] ?? "")
-    );
-    setName(key ? branchExamples[key] : defaultBranchSuggestion);
+  useEffect(
+    () => () => {
+      requestVersion.current += 1;
+    },
+    [],
+  );
+
+  async function submit(value: string) {
+    const request = value.trim();
+    if (!request) return;
+
+    const currentRequest = ++requestVersion.current;
+    setDescription(request);
+    setSuggestions([]);
+    setSelectedName("");
+    setError(null);
+    execution.reset();
     setStage("thinking");
-    run();
-    setTimeout(() => setStage("result"), 1400);
-  };
+
+    try {
+      const [names] = await Promise.all([
+        suggestNames(request, cfg),
+        cfg.mode === "demo" ? sleep(demoDelayMs) : Promise.resolve(),
+      ]);
+      if (requestVersion.current !== currentRequest) return;
+      setSuggestions(names);
+      setStage("choose");
+    } catch (caught) {
+      if (requestVersion.current !== currentRequest) return;
+      setError(friendlyBranchError(caught));
+      setStage("error");
+    }
+  }
+
+  function chooseBranch(name: string) {
+    setSelectedName(name);
+    setStage(cfg.mode === "demo" ? "demo-done" : "plan");
+  }
+
+  function reset() {
+    requestVersion.current += 1;
+    execution.reset();
+    setDescription("");
+    setSuggestions([]);
+    setSelectedName("");
+    setError(null);
+    setStage("input");
+  }
+
+  const canReset =
+    stage === "error" ||
+    stage === "demo-done" ||
+    (stage === "plan" &&
+      execution.status !== "running" &&
+      execution.status !== "confirm");
+  useInput(
+    (input) => {
+      if (canReset && input.toLowerCase() === "r") reset();
+    },
+    { isActive: canReset },
+  );
 
   return (
     <Box flexDirection="column">
@@ -37,41 +119,90 @@ export function BranchScreen() {
         subtitle="Describe the work — get a clean, conventional branch name."
       />
 
+      <FeatureModeNotice
+        mode={cfg.mode}
+        liveText="Description is sent to OpenAI; names are validated locally"
+        demoText="Branch creation is simulated"
+      />
+
       <Box>
         <Text color={colors.cyan}>{"branch ❯ "}</Text>
         {stage === "input" ? (
           <TextInput
-            value={desc}
-            onChange={setDesc}
-            onSubmit={submit}
+            value={description}
+            onChange={setDescription}
+            onSubmit={(value) => void submit(value)}
             placeholder='e.g. "add login page with OTP"'
           />
         ) : (
-          <Text color={colors.text}>{desc}</Text>
+          <Text color={colors.text}>{description}</Text>
         )}
       </Box>
 
-      {stage === "thinking" && (
+      {stage === "thinking" ? (
         <Box marginTop={1}>
           <Thinking label="Naming your branch" />
         </Box>
-      )}
+      ) : null}
 
-      {stage === "result" && (
+      {stage === "choose" ? (
         <Box flexDirection="column" marginTop={1}>
-          <Text color={colors.dim}>Suggested branch</Text>
+          <Text color={colors.dim}>Choose a validated name</Text>
+          <SelectInput
+            items={suggestions.map((name) => ({ label: name, value: name }))}
+            onSelect={(item) => chooseBranch(String(item.value))}
+            indicatorComponent={({ isSelected }) => (
+              <Text color={colors.cyan}>{isSelected ? "› " : "  "}</Text>
+            )}
+            itemComponent={({ isSelected, label }) => (
+              <Text color={isSelected ? colors.cyan : colors.text} bold={isSelected}>
+                {label}
+              </Text>
+            )}
+          />
+        </Box>
+      ) : null}
+
+      {selectedName && (stage === "plan" || stage === "demo-done") ? (
+        <Box flexDirection="column" marginTop={1}>
+          <Text color={colors.dim}>Selected branch</Text>
           <Gradient colors={[...gradients.success]}>
-            <Text bold>  {name}</Text>
+            <Text bold>  {selectedName}</Text>
           </Gradient>
           <Box marginTop={1}>
-            <CommandLine cmd={`git checkout -b ${name}`} color={colors.green} />
+            <CommandLine cmd={`git switch -c ${selectedName}`} color={colors.green} />
           </Box>
-          <Box marginTop={1}>
-            <Text color={colors.green}>✔ Switched to a new branch '{name}'</Text>
-          </Box>
-          <Hint>Esc to go back · pick another tool from the menu.</Hint>
+          {stage === "demo-done" ? (
+            <>
+              <Text color={colors.green}>✔ Demo complete — no branch was created.</Text>
+              <Hint>Press r to name another branch.</Hint>
+            </>
+          ) : null}
         </Box>
-      )}
+      ) : null}
+
+      {stage === "plan" && execution.policy ? (
+        <GitPlanExecutionView
+          error={execution.error}
+          policy={execution.policy}
+          results={execution.results}
+          status={execution.status}
+        />
+      ) : null}
+
+      {stage === "error" && error ? <FeatureErrorView error={error} /> : null}
     </Box>
   );
+}
+
+function friendlyBranchError(error: unknown): FeatureError {
+  if (isGitServiceError(error, "NOT_REPOSITORY")) {
+    return {
+      kind: "repository",
+      title: "Not a Git repository",
+      message: "Commitron can't validate branch names in this folder.",
+      nextStep: "Run `git init` or launch Commitron from an existing repository.",
+    };
+  }
+  return friendlyModelError(error, "Couldn't generate branch names");
 }

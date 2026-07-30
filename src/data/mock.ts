@@ -3,6 +3,12 @@
  * No real Git execution, no OpenAI calls — this is purely for the demo.
  */
 
+import type { AskPlan } from "../types/git-plan.ts";
+import type {
+  DiffExplanation,
+  GitErrorDiagnosis,
+} from "../types/live-features.ts";
+
 export interface DiffLine {
   type: "add" | "del" | "ctx" | "meta";
   text: string;
@@ -49,6 +55,12 @@ export const branchExamples: Record<string, string> = {
 
 export const defaultBranchSuggestion = "feat/otp-login";
 
+export const defaultBranchSuggestions = [
+  "feat/otp-login",
+  "feat/otp-authentication",
+  "feat/login-verification",
+];
+
 /** Plain-English diff summary for the Explain screen. */
 export const explainSummary = [
   "This change replaces password-based login with a one-time-password (OTP) flow.",
@@ -61,22 +73,34 @@ export const explainSummary = [
   "Risk: low. No database migrations and the session-issuing logic is unchanged.",
 ];
 
-/** Natural-language "ask" examples mapped to fake interpreted plans. */
-export interface AskPlan {
-  intent: string;
-  destructive: boolean;
-  explanation: string;
-  commands: string[];
-  warning?: string;
-}
+export const demoDiffExplanation: DiffExplanation = {
+  overview:
+    "This change replaces password-based login with a one-time-password (OTP) flow.",
+  files: [
+    {
+      path: "src/auth/login.ts",
+      explanation:
+        "login() now accepts an OTP, verifies it, and rejects invalid codes.",
+    },
+    {
+      path: "src/auth/otp.ts",
+      explanation:
+        "Adds the helper that compares a submitted code with the stored code.",
+    },
+  ],
+  riskLevel: "low",
+  riskExplanation:
+    "Session creation is unchanged and the diff contains no database migration.",
+};
 
+/** Natural-language "ask" examples mapped to fake interpreted plans. */
 export const askExamples: Record<string, AskPlan> = {
   default: {
     intent: "Undo my last commit but keep the changes",
     destructive: true,
     explanation:
       "This rewinds the branch by one commit while leaving your edited files\nuntouched and staged, so nothing you wrote is lost.",
-    commands: ["git reset --soft HEAD~1"],
+    commands: [{ args: ["reset", "--soft", "HEAD~1"] }],
     warning:
       "This rewrites history on your current branch. If you already pushed\nthis commit, collaborators may need to re-sync.",
   },
@@ -84,7 +108,7 @@ export const askExamples: Record<string, AskPlan> = {
     intent: "Show me what's changed",
     destructive: false,
     explanation: "Read-only — lists staged, unstaged, and untracked files.",
-    commands: ["git status --short --branch"],
+    commands: [{ args: ["status", "--short", "--branch"] }],
   },
 };
 
@@ -101,6 +125,20 @@ export const sampleError = {
   friendly:
     "Someone else pushed new commits to `main` before you did, so your local\nbranch is behind. Git refuses to overwrite their work.",
   fix: ["git pull --rebase origin main", "git push origin main"],
+};
+
+export const demoErrorDiagnosis: GitErrorDiagnosis = {
+  summary: "The remote rejected the push because your local branch is behind.",
+  cause:
+    "Someone else pushed commits to main, so Git prevented your push from overwriting them.",
+  commands: [
+    { args: ["pull", "--rebase", "origin", "main"] },
+    { args: ["push", "origin", "main"] },
+  ],
+  cautions: [
+    "Resolve any rebase conflicts before pushing.",
+    "Review the remote commits before changing shared history.",
+  ],
 };
 
 /** Default config shown / collected by the Setup screen. */

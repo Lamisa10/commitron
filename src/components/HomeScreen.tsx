@@ -27,7 +27,7 @@ export function HomeScreen({ mode, onSelect }: HomeScreenProps) {
       <Box marginTop={1} marginBottom={1}>
         <Text color={colors.faint}>
           {mode === "live"
-            ? "Live mode · demo-only tools are dimmed"
+            ? "Live mode · every tool is enabled for real workflows"
             : "Pick a tool to try the demo ↓"}
         </Text>
       </Box>

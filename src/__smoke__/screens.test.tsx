@@ -24,12 +24,15 @@ const check = (n: string, c: boolean) => { console.log((c ? "PASS" : "FAIL") + "
     await wait(40); stdin.write("add login page with OTP"); await wait(30); stdin.write("\r");
     await wait(1600);
     check("Branch generates name", /feat\/otp-login/.test(lastFrame()!));
-    check("Branch shows checkout cmd", /git checkout -b/.test(lastFrame()!));
+    stdin.write("\r"); await wait(40);
+    check("Branch shows switch cmd", /git switch -c/.test(lastFrame()!));
+    check("Branch demo does not create", /no branch was created/.test(lastFrame()!));
     unmount();
   }
   {
-    const { lastFrame, unmount } = render(<ExplainScreen />);
-    await wait(1700);
+    const { lastFrame, stdin, unmount } = render(<ExplainScreen />);
+    await wait(40); stdin.write("\r");
+    await wait(1400);
     check("Explain shows summary", /one-time-password/.test(lastFrame()!));
     unmount();
   }

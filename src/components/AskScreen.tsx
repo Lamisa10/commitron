@@ -1,42 +1,95 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { ScreenTitle } from "./Layout.tsx";
-import { Thinking, CommandLine, Hint } from "./shared.tsx";
-import { useFakeAI } from "../hooks/useFakeAI.ts";
-import { askExamples, type AskPlan } from "../data/mock.ts";
-import { colors, border } from "../theme.ts";
+import { Thinking } from "./shared.tsx";
+import { AskPlanView } from "./AskPlanView.tsx";
+import {
+  AskErrorView,
+  AskModeNotice,
+  type AskError,
+} from "./AskFeedback.tsx";
+import { GitPlanExecutionView } from "./GitPlanExecutionView.tsx";
+import { loadConfig } from "../config.ts";
+import { generateGitPlan } from "../services/ai.ts";
+import { getRepositoryContext, isGitServiceError } from "../services/git.ts";
+import { useGitPlanExecution } from "../hooks/useGitPlanExecution.ts";
+import type { AskPlan } from "../types/git-plan.ts";
+import { colors } from "../theme.ts";
 
-type Stage = "input" | "thinking" | "review" | "result";
+type Stage = "input" | "thinking" | "review" | "result" | "error";
+
+const demoDelayMs = 1500;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+interface AskScreenProps {
+  generatePlan?: typeof generateGitPlan;
+}
 
 /**
- * Headline feature: type a plain-English request, watch it become a Git plan,
- * and confirm before any destructive command runs.
+ * Turns plain-English intent into a Git plan. Demo mode simulates execution;
+ * live mode uses real repository context and a local execution policy.
  */
-export function AskScreen() {
+export function AskScreen({ generatePlan = generateGitPlan }: AskScreenProps) {
+  const cfg = useMemo(() => loadConfig(), []);
   const [query, setQuery] = useState("");
   const [stage, setStage] = useState<Stage>("input");
   const [plan, setPlan] = useState<AskPlan | null>(null);
   const [ran, setRan] = useState(false);
-  const { run } = useFakeAI(1500);
+  const [error, setError] = useState<AskError | null>(null);
+  const requestVersion = useRef(0);
+  const execution = useGitPlanExecution(
+    cfg.mode,
+    plan?.commands ?? null,
+    stage === "result",
+  );
 
-  // Pick a fake plan based on a keyword in the query; fall back to the default.
-  const choosePlan = (q: string): AskPlan =>
-    /status|change|what/i.test(q) ? askExamples.status : askExamples.default;
+  useEffect(
+    () => () => {
+      requestVersion.current += 1;
+    },
+    [],
+  );
 
-  const submit = (value: string) => {
-    if (!value.trim()) return;
-    const p = choosePlan(value);
-    setPlan(p);
+  async function submit(value: string) {
+    const request = value.trim();
+    if (!request) return;
+
+    const currentRequest = ++requestVersion.current;
+    setQuery(request);
+    setPlan(null);
+    setError(null);
+    setRan(false);
+    execution.reset();
     setStage("thinking");
-    run();
-    // Mirror the fake-AI delay to advance the stage.
-    setTimeout(() => setStage(p.destructive ? "review" : "result"), 1500);
-  };
 
-  // Confirm / cancel for destructive plans.
+    try {
+      let generatedPlan: AskPlan;
+      if (cfg.mode === "demo") {
+        [generatedPlan] = await Promise.all([
+          generatePlan(request, null, cfg),
+          sleep(demoDelayMs),
+        ]);
+      } else {
+        const context = await getRepositoryContext(cfg.mode);
+        generatedPlan = await generatePlan(request, context, cfg);
+      }
+
+      if (requestVersion.current !== currentRequest) return;
+      setPlan(generatedPlan);
+      setStage(
+        cfg.mode === "demo" && generatedPlan.destructive ? "review" : "result",
+      );
+    } catch (caught) {
+      if (requestVersion.current !== currentRequest) return;
+      setError(friendlyAskError(caught));
+      setStage("error");
+    }
+  }
+
+  // Demo-only confirmation for the simulated execution flow.
   useInput((input, key) => {
-    if (stage !== "review") return;
+    if (cfg.mode !== "demo" || stage !== "review") return;
     if (input.toLowerCase() === "y" || key.return) {
       setRan(true);
       setStage("result");
@@ -47,29 +100,43 @@ export function AskScreen() {
   });
 
   const reset = () => {
+    requestVersion.current += 1;
     setQuery("");
     setPlan(null);
     setRan(false);
+    setError(null);
+    execution.reset();
     setStage("input");
   };
 
+  const canReset =
+    stage === "error" ||
+    (stage === "result" &&
+      execution.status !== "running" &&
+      execution.status !== "confirm");
+
   useInput(
     (input) => {
-      if (stage === "result" && input.toLowerCase() === "r") reset();
+      if (canReset && input.toLowerCase() === "r") {
+        reset();
+      }
     },
-    { isActive: stage === "result" }
+    { isActive: canReset },
   );
 
   return (
     <Box flexDirection="column">
-      <ScreenTitle icon="✦" title="Ask" subtitle="Describe what you want — Commitron writes the Git." />
+      <ScreenTitle
+        icon="✦"
+        title="Ask"
+        subtitle={
+          cfg.mode === "live"
+            ? "Describe what you want — Commitron prepares a repository-aware plan."
+            : "Describe what you want — Commitron writes the Git."
+        }
+      />
 
-      <Box marginBottom={1}>
-        <Text color={colors.yellow} bold>
-          ◇ DEMO ONLY
-        </Text>
-        <Text color={colors.faint}> · Mock plans — no Git commands run</Text>
-      </Box>
+      <AskModeNotice mode={cfg.mode} />
 
       {/* Prompt */}
       <Box>
@@ -78,7 +145,7 @@ export function AskScreen() {
           <TextInput
             value={query}
             onChange={setQuery}
-            onSubmit={submit}
+            onSubmit={(value) => void submit(value)}
             placeholder='e.g. "undo my last commit but keep the changes"'
           />
         ) : (
@@ -92,60 +159,59 @@ export function AskScreen() {
         </Box>
       )}
 
-      {plan && stage !== "input" && stage !== "thinking" && (
-        <Box flexDirection="column" marginTop={1}>
-          <Text color={colors.dim}>Interpreted intent</Text>
-          <Text color={colors.text}>“{plan.intent}”</Text>
-
-          <Box flexDirection="column" marginTop={1}>
-            <Text color={colors.dim}>Plan</Text>
-            {plan.commands.map((c, i) => (
-              <CommandLine key={i} cmd={c} />
-            ))}
-          </Box>
-
-          <Box flexDirection="column" marginTop={1}>
-            <Text color={colors.dim}>What this does</Text>
-            <Text color={colors.text}>{plan.explanation}</Text>
-          </Box>
-
-          {/* Destructive warning + confirm gate */}
-          {plan.destructive && plan.warning && (
-            <Box
-              flexDirection="column"
-              borderStyle={border}
-              borderColor={colors.red}
-              paddingX={1}
-              marginTop={1}
-            >
-              <Text color={colors.red} bold>
-                ⚠ Destructive operation
-              </Text>
-              <Text color={colors.yellow}>{plan.warning}</Text>
-            </Box>
-          )}
-
-          {stage === "review" && (
-            <Box marginTop={1}>
-              <Text color={colors.text}>
-                Run this? <Text color={colors.green}>[y]</Text>{" "}
-                <Text color={colors.red}>[n]</Text>
-              </Text>
-            </Box>
-          )}
-
-          {stage === "result" && (
-            <Box marginTop={1} flexDirection="column">
-              {ran || !plan.destructive ? (
-                <Text color={colors.green}>✔ Done — command executed.</Text>
-              ) : (
-                <Text color={colors.yellow}>✗ Cancelled — nothing was run.</Text>
-              )}
-              <Hint>Press r to ask something else.</Hint>
-            </Box>
-          )}
-        </Box>
+      {stage === "error" && error && (
+        <AskErrorView error={error} />
       )}
+
+      {plan && (stage === "review" || stage === "result") && (
+        <AskPlanView mode={cfg.mode} plan={plan} ran={ran} stage={stage} />
+      )}
+
+      {cfg.mode === "live" &&
+      stage === "result" &&
+      execution.policy ? (
+        <GitPlanExecutionView
+          error={execution.error}
+          policy={execution.policy}
+          results={execution.results}
+          status={execution.status}
+        />
+      ) : null}
     </Box>
   );
+}
+
+function friendlyAskError(error: unknown): AskError {
+  if (isGitServiceError(error, "NOT_REPOSITORY")) {
+    return {
+      kind: "repository",
+      title: "Not a Git repository",
+      message: "Commitron can't prepare a live plan in this folder.",
+      nextStep: "Run `git init` or launch Commitron from an existing repository.",
+    };
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  if (/401|api key|incorrect api/i.test(message)) {
+    return {
+      kind: "error",
+      title: "OpenAI rejected the request",
+      message: "Check the API key saved in Setup.",
+    };
+  }
+  if (/ENOTFOUND|ETIMEDOUT|fetch failed|network/i.test(message)) {
+    return {
+      kind: "error",
+      title: "Couldn't reach OpenAI",
+      message: "Check your network connection and try again.",
+    };
+  }
+
+  return {
+    kind: "error",
+    title: "Couldn't prepare the plan",
+    message:
+      message.split("\n").find((line) => line.trim())?.trim().slice(0, 200) ||
+      "An unknown error occurred.",
+  };
 }

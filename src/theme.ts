@@ -56,7 +56,7 @@ export const menu: MenuItem[] = [
     icon: "✦",
     label: "Ask",
     hint: "Plain-English Git commands",
-    availableInLive: false,
+    availableInLive: true,
   },
   {
     id: "commit",
@@ -70,21 +70,21 @@ export const menu: MenuItem[] = [
     icon: "⌥",
     label: "Branch",
     hint: "Generate branch names",
-    availableInLive: false,
+    availableInLive: true,
   },
   {
     id: "explain",
     icon: "❖",
     label: "Explain",
     hint: "Summarize a diff",
-    availableInLive: false,
+    availableInLive: true,
   },
   {
     id: "error",
     icon: "⚠",
     label: "Fix Error",
     hint: "Decode Git errors",
-    availableInLive: false,
+    availableInLive: true,
   },
   {
     id: "init",
