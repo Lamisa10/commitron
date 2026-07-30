@@ -10,7 +10,11 @@
     "start": "bun run src/cli.tsx",
     "start:node": "tsx src/cli.tsx",
     "dev": "bun run src/cli.tsx",
-    "smoke": "bun run src/__smoke__/nav.test.tsx"
+    "smoke": "bun run src/__smoke__/run.ts",
+    "smoke:nav": "bun run src/__smoke__/nav.test.tsx",
+    "smoke:live": "bun run src/__smoke__/live-features.test.tsx",
+    "smoke:commit-stack": "bun run src/__smoke__/commit-stack.test.tsx",
+    "smoke:screens": "bun run src/__smoke__/screens.test.tsx"
   },
   "dependencies": {
     "ink": "^5.1.0",
