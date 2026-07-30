@@ -1,25 +1,83 @@
 import React from "react";
 import { Box, Text } from "ink";
+import { homedir } from "node:os";
+import { basename, sep } from "node:path";
 import { Banner } from "./Banner.tsx";
+import type { Mode } from "../config.ts";
 import { colors, border, menu, type ScreenId } from "../theme.ts";
 
 interface LayoutProps {
   active: ScreenId;
+  mode: Mode;
   footer?: React.ReactNode;
   children: React.ReactNode;
+}
+
+interface WorkingDirectoryBreadcrumb {
+  parentPath: string;
+  directoryName: string;
+}
+
+const maxBreadcrumbLength = 64;
+
+/** Builds a compact path while keeping the current directory visually prominent. */
+function getWorkingDirectoryBreadcrumb(): WorkingDirectoryBreadcrumb {
+  const workingDirectory = process.cwd();
+  const homeDirectory = homedir();
+  let displayPath = workingDirectory;
+
+  if (workingDirectory === homeDirectory) {
+    displayPath = "~";
+  } else if (workingDirectory.startsWith(`${homeDirectory}${sep}`)) {
+    displayPath = `~${workingDirectory.slice(homeDirectory.length)}`;
+  }
+
+  if (displayPath.length > maxBreadcrumbLength) {
+    const trailingPath = displayPath
+      .split(sep)
+      .filter((segment) => segment && segment !== "~")
+      .slice(-3)
+      .join(sep);
+    const prefix = displayPath.startsWith(`~${sep}`)
+      ? `~${sep}`
+      : displayPath.startsWith(sep)
+        ? sep
+        : `${displayPath.split(sep)[0]}${sep}`;
+
+    displayPath = `${prefix}…${sep}${trailingPath}`;
+  }
+
+  const directoryName = basename(workingDirectory);
+  if (!directoryName || !displayPath.endsWith(directoryName)) {
+    return { parentPath: "", directoryName: displayPath };
+  }
+
+  return {
+    parentPath: displayPath.slice(0, -directoryName.length),
+    directoryName,
+  };
 }
 
 /**
  * The persistent chrome: compact header, left sidebar menu highlighting the
  * active screen, a framed content area, and a footer hint bar.
  */
-export function Layout({ active, footer, children }: LayoutProps) {
+export function Layout({ active, mode, footer, children }: LayoutProps) {
+  const workingDirectory = getWorkingDirectoryBreadcrumb();
+
   return (
     <Box flexDirection="column" paddingX={1}>
       {/* Header */}
-      <Box justifyContent="space-between" marginBottom={1}>
+      <Box justifyContent="space-between">
         <Banner compact />
         <Text color={colors.faint}>{new Date().toLocaleDateString()}</Text>
+      </Box>
+      <Box marginBottom={1}>
+        <Text color={colors.violet}>⌂  </Text>
+        <Text color={colors.faint}>{workingDirectory.parentPath}</Text>
+        <Text color={colors.cyan} bold>
+          {workingDirectory.directoryName}
+        </Text>
       </Box>
 
       <Box>
@@ -37,11 +95,12 @@ export function Layout({ active, footer, children }: LayoutProps) {
           </Text>
           {menu.map((item) => {
             const isActive = item.id === active;
+            const isAvailable = mode === "demo" || item.availableInLive;
             return (
               <Text
                 key={item.id}
-                color={isActive ? colors.cyan : colors.text}
-                bold={isActive}
+                color={isActive ? colors.cyan : isAvailable ? colors.text : colors.faint}
+                bold={isActive && isAvailable}
               >
                 {isActive ? "› " : "  "}
                 {item.icon} {item.label}

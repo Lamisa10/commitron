@@ -4,11 +4,24 @@ import SelectInput from "ink-select-input";
 import { ScreenTitle } from "./Layout.tsx";
 import { Thinking, DiffView, Hint } from "./shared.tsx";
 import { loadConfig } from "../config.ts";
-import { getStagedDiff, commit, type StagedDiff, type CommitResult } from "../services/git.ts";
+import {
+  getStagedDiff,
+  commit,
+  isGitServiceError,
+  type StagedDiff,
+  type CommitResult,
+} from "../services/git.ts";
 import { generateCommitMessages, type CommitCandidate } from "../services/ai.ts";
 import { colors, border } from "../theme.ts";
 
 type Status = "loading" | "empty" | "ready" | "committing" | "done" | "error";
+
+interface CommitError {
+  kind: "repository" | "error";
+  title: string;
+  message: string;
+  nextStep?: string;
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -24,7 +37,7 @@ export function CommitScreen() {
   const [chosen, setChosen] = useState<number | null>(null);
   const [result, setResult] = useState<CommitResult | null>(null);
   const [status, setStatus] = useState<Status>("loading");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<CommitError | null>(null);
 
   // Read the diff and generate messages on mount (re-runs each time the screen opens).
   useEffect(() => {
@@ -99,11 +112,21 @@ export function CommitScreen() {
       )}
 
       {status === "error" && (
-        <Box flexDirection="column" borderStyle={border} borderColor={colors.red} paddingX={1}>
-          <Text color={colors.red} bold>
-            ✖ Something went wrong
+        <Box
+          flexDirection="column"
+          borderStyle={border}
+          borderColor={error?.kind === "repository" ? colors.yellow : colors.red}
+          paddingX={1}
+        >
+          <Text color={error?.kind === "repository" ? colors.yellow : colors.red} bold>
+            {error?.kind === "repository" ? "◇" : "✖"} {error?.title}
           </Text>
-          <Text color={colors.text}>{error}</Text>
+          <Text color={colors.text}>{error?.message}</Text>
+          {error?.nextStep && (
+            <Box marginTop={1}>
+              <Text color={colors.dim}>{error.nextStep}</Text>
+            </Box>
+          )}
         </Box>
       )}
 
@@ -144,12 +167,44 @@ export function CommitScreen() {
   );
 }
 
-/** Turns raw git/OpenAI errors into a short, friendly line. */
-function friendlyError(e: unknown): string {
+/** Turns raw Git/OpenAI errors into compact, actionable UI content. */
+function friendlyError(e: unknown): CommitError {
+  if (isGitServiceError(e, "NOT_REPOSITORY")) {
+    return {
+      kind: "repository",
+      title: "Not a Git repository",
+      message: "Commitron can't read staged changes in this folder.",
+      nextStep: "Run `git init` or launch Commitron from an existing repository.",
+    };
+  }
+
   const msg = e instanceof Error ? e.message : String(e);
-  if (/not a git repository/i.test(msg)) return "This folder isn't a Git repository.";
-  if (/nothing to commit/i.test(msg)) return "Nothing to commit — your staged changes may be empty.";
-  if (/401|api key|incorrect api/i.test(msg)) return "OpenAI rejected the request — check your API key.";
-  if (/ENOTFOUND|ETIMEDOUT|fetch failed|network/i.test(msg)) return "Couldn't reach OpenAI — check your connection.";
-  return msg;
+  if (/nothing to commit/i.test(msg)) {
+    return {
+      kind: "error",
+      title: "Nothing to commit",
+      message: "Your staged changes may be empty.",
+    };
+  }
+  if (/401|api key|incorrect api/i.test(msg)) {
+    return {
+      kind: "error",
+      title: "OpenAI rejected the request",
+      message: "Check the API key saved in Setup.",
+    };
+  }
+  if (/ENOTFOUND|ETIMEDOUT|fetch failed|network/i.test(msg)) {
+    return {
+      kind: "error",
+      title: "Couldn't reach OpenAI",
+      message: "Check your network connection and try again.",
+    };
+  }
+
+  const firstLine = msg.split("\n").find((line) => line.trim())?.trim();
+  return {
+    kind: "error",
+    title: "Something went wrong",
+    message: firstLine?.slice(0, 200) || "An unknown error occurred.",
+  };
 }

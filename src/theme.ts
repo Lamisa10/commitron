@@ -47,13 +47,50 @@ export interface MenuItem {
   icon: string;
   label: string;
   hint: string;
+  availableInLive: boolean;
 }
 
 export const menu: MenuItem[] = [
-  { id: "ask", icon: "✦", label: "Ask", hint: "Plain-English Git commands" },
-  { id: "commit", icon: "✎", label: "Commit", hint: "AI commit messages" },
-  { id: "branch", icon: "⌥", label: "Branch", hint: "Generate branch names" },
-  { id: "explain", icon: "❖", label: "Explain", hint: "Summarize a diff" },
-  { id: "error", icon: "⚠", label: "Fix Error", hint: "Decode Git errors" },
-  { id: "init", icon: "⚙", label: "Setup", hint: "Configure Commitron" },
+  {
+    id: "ask",
+    icon: "✦",
+    label: "Ask",
+    hint: "Plain-English Git commands",
+    availableInLive: false,
+  },
+  {
+    id: "commit",
+    icon: "✎",
+    label: "Commit",
+    hint: "AI commit messages",
+    availableInLive: true,
+  },
+  {
+    id: "branch",
+    icon: "⌥",
+    label: "Branch",
+    hint: "Generate branch names",
+    availableInLive: false,
+  },
+  {
+    id: "explain",
+    icon: "❖",
+    label: "Explain",
+    hint: "Summarize a diff",
+    availableInLive: false,
+  },
+  {
+    id: "error",
+    icon: "⚠",
+    label: "Fix Error",
+    hint: "Decode Git errors",
+    availableInLive: false,
+  },
+  {
+    id: "init",
+    icon: "⚙",
+    label: "Setup",
+    hint: "Configure Commitron",
+    availableInLive: true,
+  },
 ];

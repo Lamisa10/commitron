@@ -64,6 +64,13 @@ export function AskScreen() {
     <Box flexDirection="column">
       <ScreenTitle icon="✦" title="Ask" subtitle="Describe what you want — Commitron writes the Git." />
 
+      <Box marginBottom={1}>
+        <Text color={colors.yellow} bold>
+          ◇ DEMO ONLY
+        </Text>
+        <Text color={colors.faint}> · Mock plans — no Git commands run</Text>
+      </Box>
+
       {/* Prompt */}
       <Box>
         <Text color={colors.cyan}>{"ask ❯ "}</Text>

@@ -8,6 +8,7 @@ import { BranchScreen } from "./components/BranchScreen.tsx";
 import { ExplainScreen } from "./components/ExplainScreen.tsx";
 import { ErrorHelperScreen } from "./components/ErrorHelperScreen.tsx";
 import { InitScreen } from "./components/InitScreen.tsx";
+import { loadConfig, type Mode } from "./config.ts";
 import type { ScreenId } from "./theme.ts";
 
 /** Maps each screen id to its component. Remounts on navigation via React key. */
@@ -24,24 +25,30 @@ const screens: Record<Exclude<ScreenId, "home">, React.ComponentType> = {
 export function App() {
   const { exit } = useApp();
   const [screen, setScreen] = useState<ScreenId>("home");
+  const [mode, setMode] = useState<Mode>(() => loadConfig().mode);
 
   useInput((input, key) => {
-    if (key.escape) setScreen("home");
+    if (key.escape) {
+      setMode(loadConfig().mode);
+      setScreen("home");
+    }
     // Only treat "q" as quit from the home screen, so it can be typed elsewhere.
     if (input === "q" && screen === "home") exit();
   });
 
   const footer =
     screen === "home"
-      ? "↑↓ navigate · Enter open · q quit"
+      ? mode === "live"
+        ? "↑↓ available tools · Enter open · Switch to demo in Setup to unlock all · q quit"
+        : "↑↓ navigate · Enter open · q quit"
       : "Esc back to menu · q from home to quit";
 
   const Active = screen === "home" ? null : screens[screen];
 
   return (
-    <Layout active={screen} footer={footer}>
+    <Layout active={screen} mode={mode} footer={footer}>
       {screen === "home" ? (
-        <HomeScreen onSelect={setScreen} />
+        <HomeScreen mode={mode} onSelect={setScreen} />
       ) : (
         // key forces a fresh mount each time a screen opens (re-runs the fake AI).
         Active && <Active key={screen} />

@@ -1,20 +1,17 @@
 import React from "react";
 import { Box, Text } from "ink";
-import SelectInput from "ink-select-input";
 import Gradient from "ink-gradient";
-import { colors, gradients, menu, type ScreenId } from "../theme.ts";
+import type { Mode } from "../config.ts";
+import { colors, gradients, type ScreenId } from "../theme.ts";
+import { FeatureMenu } from "./FeatureMenu.tsx";
 
 interface HomeScreenProps {
+  mode: Mode;
   onSelect: (id: ScreenId) => void;
 }
 
 /** Landing dashboard: a quick value-prop line plus the launchable feature list. */
-export function HomeScreen({ onSelect }: HomeScreenProps) {
-  const items = menu.map((m) => ({
-    label: `${m.icon}  ${m.label.padEnd(8)} ${m.hint}`,
-    value: m.id,
-  }));
-
+export function HomeScreen({ mode, onSelect }: HomeScreenProps) {
   return (
     <Box flexDirection="column">
       <Gradient colors={[...gradients.brand]}>
@@ -28,21 +25,14 @@ export function HomeScreen({ onSelect }: HomeScreenProps) {
       </Text>
 
       <Box marginTop={1} marginBottom={1}>
-        <Text color={colors.faint}>Pick a tool to try the demo ↓</Text>
+        <Text color={colors.faint}>
+          {mode === "live"
+            ? "Live mode · demo-only tools are dimmed"
+            : "Pick a tool to try the demo ↓"}
+        </Text>
       </Box>
 
-      <SelectInput
-        items={items}
-        onSelect={(item) => onSelect(item.value as ScreenId)}
-        indicatorComponent={({ isSelected }) => (
-          <Text color={colors.cyan}>{isSelected ? "› " : "  "}</Text>
-        )}
-        itemComponent={({ isSelected, label }) => (
-          <Text color={isSelected ? colors.cyan : colors.text} bold={isSelected}>
-            {label}
-          </Text>
-        )}
-      />
+      <FeatureMenu mode={mode} onSelect={onSelect} />
     </Box>
   );
 }
