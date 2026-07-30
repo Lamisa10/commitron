@@ -14,6 +14,7 @@ process.env.COMMITRON_CONFIG = TEST_CONFIG;
 if (existsSync(TEST_CONFIG)) unlinkSync(TEST_CONFIG); // start from a clean slate
 
 const ARROW_DOWN = "[B";
+const PAGE_DOWN = "[6~";
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let fail = 0;
 const check = (n: string, c: boolean) => { console.log((c ? "PASS" : "FAIL") + "  " + n); if (!c) fail++; };
@@ -37,10 +38,19 @@ const check = (n: string, c: boolean) => { console.log((c ? "PASS" : "FAIL") + "
     unmount();
   }
   {
-    const { lastFrame, unmount } = render(<ErrorHelperScreen />);
+    const { lastFrame, stdin, unmount } = render(<ErrorHelperScreen />);
     await wait(1700);
-    check("Error shows friendly explanation", /What happened/.test(lastFrame()!));
-    check("Error shows fix", /git pull --rebase/.test(lastFrame()!));
+    stdin.write("g"); await wait(30);
+    let foundExplanation = false;
+    let foundFix = false;
+    for (let page = 0; page < 10; page++) {
+      const frame = lastFrame()!;
+      foundExplanation ||= /What happened/.test(frame);
+      foundFix ||= /git pull --rebase/.test(frame);
+      stdin.write(PAGE_DOWN); await wait(20);
+    }
+    check("Error shows friendly explanation", foundExplanation);
+    check("Error shows fix", foundFix);
     unmount();
   }
   {

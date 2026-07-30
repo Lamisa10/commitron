@@ -1,15 +1,21 @@
 import React from "react";
+import { Box, Text } from "ink";
 import { render } from "ink-testing-library";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BranchScreen } from "../components/BranchScreen.tsx";
+import { ErrorDiagnosisView } from "../components/ErrorDiagnosisView.tsx";
 import { ErrorHelperScreen } from "../components/ErrorHelperScreen.tsx";
 import { ExplainScreen } from "../components/ExplainScreen.tsx";
+import { ScrollViewport } from "../components/ScrollViewport.tsx";
 import { getExplainableDiff } from "../services/git.ts";
+import { sanitizeTerminalText } from "../utils/terminal-text.ts";
 
 const ENTER = "\r";
+const ESC = String.fromCharCode(27);
+const PAGE_DOWN = `${ESC}[6~`;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function run() {
@@ -19,6 +25,82 @@ async function run() {
     console.log(`${condition ? "PASS" : "FAIL"}  ${name}`);
     condition ? pass++ : fail++;
   };
+
+  const sanitizedTerminalError = sanitizeTerminalText(
+    "\u001B]0;git error\u0007remote denied\r\u001B[31mfatal: 403\u001B[0m\thttps://github.com/example/repository.git",
+  );
+  check(
+    "Fix Error removes terminal control sequences",
+    !/[\u001B\r\u0007]/.test(sanitizedTerminalError) &&
+      sanitizedTerminalError.startsWith("remote denied\nfatal: 403"),
+  );
+  check(
+    "Fix Error preserves readable URLs",
+    sanitizedTerminalError.includes(
+      "https://github.com/example/repository.git",
+    ),
+  );
+  const unsafeErrorView = render(
+    <ErrorDiagnosisView
+      command="git push origin main"
+      diagnosis={{
+        summary: "GitHub rejected the push.",
+        cause: "The authenticated account does not have repository access.",
+        commands: [],
+        cautions: [],
+      }}
+      errorOutput={
+        "\u001B[31mremote denied\rfatal: unable to access " +
+        "https://github.com/example/a-very-long-repository-name.git\u001B[0m"
+      }
+    />,
+  );
+  const safeErrorFrame = unsafeErrorView.lastFrame()!;
+  check(
+    "Fix Error keeps pasted output inside its frame",
+    !/[\u001B\r]/.test(safeErrorFrame) &&
+      safeErrorFrame.split("\n").every((line) => line.length <= 100),
+  );
+  unsafeErrorView.unmount();
+
+  const scrollViewport = render(
+    <ScrollViewport reservedRows={18}>
+      <Box flexDirection="column">
+        {Array.from({ length: 20 }, (_, index) => (
+          <Text key={index}>
+            VIEWPORT LINE {String(index + 1).padStart(2, "0")}
+          </Text>
+        ))}
+      </Box>
+    </ScrollViewport>,
+  );
+  await wait(50);
+  const topViewportFrame = scrollViewport.lastFrame()!;
+  check(
+    "Scrollable viewport clips long results",
+    topViewportFrame.includes("VIEWPORT LINE 01") &&
+      !topViewportFrame.includes("VIEWPORT LINE 20") &&
+      /lines 1–6 of 20/.test(topViewportFrame),
+  );
+  scrollViewport.stdin.write(PAGE_DOWN);
+  await wait(30);
+  check(
+    "Scrollable viewport supports page navigation",
+    scrollViewport.lastFrame() !== topViewportFrame,
+  );
+  scrollViewport.stdin.write("G");
+  await wait(30);
+  check(
+    "Scrollable viewport jumps to the bottom",
+    scrollViewport.lastFrame()!.includes("VIEWPORT LINE 20"),
+  );
+  scrollViewport.stdin.write("g");
+  await wait(30);
+  check(
+    "Scrollable viewport jumps to the top",
+    scrollViewport.lastFrame()!.includes("VIEWPORT LINE 01"),
+  );
+  scrollViewport.unmount();
 
   const originalWorkingDirectory = process.cwd();
   const repository = mkdtempSync(join(tmpdir(), "commitron-live-features-"));
@@ -124,11 +206,23 @@ async function run() {
     errorHelper.stdin.write("rejected non-fast-forward");
     await wait(30);
     errorHelper.stdin.write(ENTER);
-    await wait(100);
-    const errorFrame = errorHelper.lastFrame()!;
-    check("Live Fix Error explains pasted failures", /remote branch has newer commits/.test(errorFrame));
-    check("Live Fix Error shows recovery commands", /git pull --rebase origin main/.test(errorFrame));
-    check("Live Fix Error keeps risky fixes manual", /MANUAL ONLY/.test(errorFrame));
+    await wait(150);
+    errorHelper.stdin.write("g");
+    await wait(30);
+    let foundExplanation = false;
+    let foundRecovery = false;
+    let foundManualPolicy = false;
+    for (let page = 0; page < 10; page += 1) {
+      const frame = errorHelper.lastFrame()!;
+      foundExplanation ||= /remote branch has newer commits/.test(frame);
+      foundRecovery ||= /git pull --rebase origin main/.test(frame);
+      foundManualPolicy ||= /MANUAL ONLY/.test(frame);
+      errorHelper.stdin.write(PAGE_DOWN);
+      await wait(20);
+    }
+    check("Live Fix Error explains pasted failures", foundExplanation);
+    check("Live Fix Error shows recovery commands", foundRecovery);
+    check("Live Fix Error keeps risky fixes manual", foundManualPolicy);
     errorHelper.unmount();
   } finally {
     process.chdir(originalWorkingDirectory);

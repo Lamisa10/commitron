@@ -7,9 +7,14 @@ import { sampleError } from "../data/mock.ts";
 import { diagnoseGitError } from "../services/error-helper.ts";
 import type { GitErrorDiagnosis } from "../types/live-features.ts";
 import { colors } from "../theme.ts";
+import {
+  sanitizeTerminalLine,
+  sanitizeTerminalText,
+} from "../utils/terminal-text.ts";
 import { ErrorDiagnosisView } from "./ErrorDiagnosisView.tsx";
 import { FeatureErrorView, type FeatureError } from "./FeatureErrorView.tsx";
 import { GitPlanExecutionView } from "./GitPlanExecutionView.tsx";
+import { ScrollViewport } from "./ScrollViewport.tsx";
 import { ScreenTitle } from "./Layout.tsx";
 import {
   CommandLine,
@@ -82,14 +87,18 @@ export function ErrorHelperScreen({
   }, []);
 
   function submitCommand(value: string) {
-    const command = value.trim();
+    const command = sanitizeTerminalLine(value)
+      .trim()
+      .slice(0, maxCommandCharacters);
     if (!command) return;
     setFailedCommand(command);
     setStage("error-input");
   }
 
   async function submitError(value: string) {
-    const output = value.trim().slice(0, maxErrorCharacters);
+    const output = sanitizeTerminalText(value)
+      .trim()
+      .slice(0, maxErrorCharacters);
     if (!output) return;
 
     const currentRequest = ++requestVersion.current;
@@ -152,7 +161,11 @@ export function ErrorHelperScreen({
           <Text color={colors.cyan}>{"command ❯ "}</Text>
           <TextInput
             value={failedCommand}
-            onChange={(value) => setFailedCommand(value.slice(0, maxCommandCharacters))}
+            onChange={(value) =>
+              setFailedCommand(
+                sanitizeTerminalLine(value).slice(0, maxCommandCharacters),
+              )
+            }
             onSubmit={submitCommand}
             placeholder="git push origin main"
           />
@@ -166,7 +179,11 @@ export function ErrorHelperScreen({
             <Text color={colors.red}>{"error ❯ "}</Text>
             <TextInput
               value={errorOutput}
-              onChange={(value) => setErrorOutput(value.slice(0, maxErrorCharacters))}
+              onChange={(value) =>
+                setErrorOutput(
+                  sanitizeTerminalText(value).slice(0, maxErrorCharacters),
+                )
+              }
               onSubmit={(value) => void submitError(value)}
               placeholder="paste the most useful Git error text"
             />
@@ -178,26 +195,24 @@ export function ErrorHelperScreen({
       {stage === "thinking" ? <Thinking label="Decoding the error" /> : null}
 
       {stage === "result" && diagnosis ? (
-        <ErrorDiagnosisView
-          command={failedCommand}
-          diagnosis={diagnosis}
-          errorOutput={errorOutput}
-        />
-      ) : null}
-
-      {cfg.mode === "live" &&
-      stage === "result" &&
-      execution.policy ? (
-        <GitPlanExecutionView
-          error={execution.error}
-          policy={execution.policy}
-          results={execution.results}
-          status={execution.status}
-        />
-      ) : null}
-
-      {cfg.mode === "demo" && stage === "result" ? (
-        <Hint>Esc to go back · no commands were run.</Hint>
+        <ScrollViewport reservedRows={16}>
+          <ErrorDiagnosisView
+            command={failedCommand}
+            diagnosis={diagnosis}
+            errorOutput={errorOutput}
+          />
+          {cfg.mode === "live" && execution.policy ? (
+            <GitPlanExecutionView
+              error={execution.error}
+              policy={execution.policy}
+              results={execution.results}
+              status={execution.status}
+            />
+          ) : null}
+          {cfg.mode === "demo" ? (
+            <Hint>Esc to go back · no commands were run.</Hint>
+          ) : null}
+        </ScrollViewport>
       ) : null}
 
       {stage === "failure" && error ? <FeatureErrorView error={error} /> : null}

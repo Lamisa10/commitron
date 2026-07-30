@@ -3,6 +3,7 @@ import { Box, Text } from "ink";
 import { formatGitCommand } from "../services/git-policy.ts";
 import type { GitErrorDiagnosis } from "../types/live-features.ts";
 import { border, colors } from "../theme.ts";
+import { sanitizeTerminalText } from "../utils/terminal-text.ts";
 import { CommandLine } from "./shared.tsx";
 
 interface ErrorDiagnosisViewProps {
@@ -17,8 +18,10 @@ export function ErrorDiagnosisView({
   diagnosis,
   errorOutput,
 }: ErrorDiagnosisViewProps) {
+  const safeErrorOutput = sanitizeTerminalText(errorOutput);
+
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" width="100%" minWidth={0}>
       <CommandLine cmd={command} color={colors.text} />
       <Box
         flexDirection="column"
@@ -27,8 +30,13 @@ export function ErrorDiagnosisView({
         paddingX={1}
         marginTop={1}
         marginBottom={1}
+        width="100%"
+        minWidth={0}
+        overflow="hidden"
       >
-        <Text color={colors.red}>{errorOutput}</Text>
+        <Text color={colors.red} wrap="wrap">
+          {safeErrorOutput}
+        </Text>
       </Box>
 
       <Box
@@ -36,6 +44,9 @@ export function ErrorDiagnosisView({
         borderStyle={border}
         borderColor={colors.cyan}
         paddingX={1}
+        width="100%"
+        minWidth={0}
+        overflow="hidden"
       >
         <Text color={colors.cyan} bold>
           What happened
