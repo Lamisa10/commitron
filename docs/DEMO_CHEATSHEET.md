@@ -7,15 +7,13 @@ Keep this file open during the presentation.
 From the generated demo repository:
 
 ```bash
-bun run /Users/tahsin/Workstation/lamisa-work/commitron/src/cli.tsx
+commitron
 ```
-
-Use globally installed `commitron` instead if it works.
 
 ## 1. Ask
 
 ```bash
-bun run demo:scenario ask
+commitron demo scenario ask
 ```
 
 Try these one at a time:
@@ -34,7 +32,7 @@ Say:
 ## 2. Commit
 
 ```bash
-bun run demo:scenario commit
+commitron demo scenario commit
 ```
 
 Open **Commit** and review the proposed groups.
@@ -46,7 +44,7 @@ Say:
 ## 3. Branch
 
 ```bash
-bun run demo:scenario branch
+commitron demo scenario branch
 ```
 
 Enter:
@@ -62,7 +60,7 @@ Say:
 ## 4. Explain
 
 ```bash
-bun run demo:scenario explain
+commitron demo scenario explain
 ```
 
 Choose **All tracked changes**.
@@ -74,7 +72,7 @@ Say:
 ## 5. Fix Error
 
 ```bash
-bun run demo:scenario fix-error
+commitron demo scenario fix-error
 git push
 ```
 
@@ -93,10 +91,10 @@ Say:
 
 ## If something breaks
 
-Close Commitron with Esc, then `q`. Run the current `demo:scenario` command again.
+Close Commitron with Esc, then `q`. Run the current scenario command again.
 
 Clean reset:
 
 ```bash
-bun run demo:reset
+commitron demo reset
 ```

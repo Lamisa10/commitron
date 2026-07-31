@@ -79,7 +79,7 @@ bun run start:node
 Generate a disposable Git repository containing repeatable live scenarios:
 
 ```bash
-bun run demo:prepare -- ../commitron-university-demo
+commitron demo prepare ../commitron-university-demo
 cd ../commitron-university-demo
 ```
 

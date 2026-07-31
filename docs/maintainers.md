@@ -17,18 +17,19 @@ stored in `~/.config/commitron/config.json` with owner-only permissions.
 Generate a disposable Git repository, then run the real Commitron inside it:
 
 ```bash
-bun run demo:prepare -- ../commitron-university-demo
+commitron demo prepare ../commitron-university-demo
 cd ../commitron-university-demo
 
-bun run demo:scenario ask
+commitron demo scenario ask
 commitron
 
-bun run demo:scenario commit
+commitron demo scenario commit
 commitron
 ```
 
 The generated repository includes `ask`, `commit`, `branch`, `explain`, and
-`fix-error` checkpoints plus a `DEMO_GUIDE.md`. Each checkpoint resets only that
+`fix-error` checkpoints plus beginner guide and cheat-sheet files. Demo commands
+are bundled into the published `commitron` binary. Each checkpoint resets only that
 generated repository, then prepares real commits, branches, staged or unstaged
 files, or a local non-fast-forward push failure. It never changes the Commitron
 source repository or uses an internet remote.

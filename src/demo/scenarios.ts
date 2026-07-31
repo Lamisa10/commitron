@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+/** Real Git states available to the installed Commitron demo command. */
 export const scenarioNames = [
   "ask",
   "commit",

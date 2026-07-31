@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -12,6 +13,8 @@ import { join } from "node:path";
 
 const testRoot = mkdtempSync(join(tmpdir(), "commitron-demo-repo-test-"));
 const demoRepository = join(testRoot, "generated-demo");
+const projectRoot = process.cwd();
+const sourceCli = join(projectRoot, "src", "cli.tsx");
 let failures = 0;
 
 function check(name: string, condition: boolean): void {
@@ -22,10 +25,12 @@ function check(name: string, condition: boolean): void {
 try {
   execFileSync(process.execPath, [
     "run",
-    "scripts/prepare-demo-repo.ts",
+    sourceCli,
+    "demo",
+    "prepare",
     demoRepository,
   ], {
-    cwd: process.cwd(),
+    cwd: projectRoot,
     stdio: "ignore",
   });
 
@@ -54,6 +59,15 @@ try {
         join(demoRepository, "DEMO_CHEATSHEET.md"),
         "utf8",
       ).includes("Keep this file open during the presentation"),
+  );
+  check(
+    "Generated repository relies on the Commitron binary",
+    !existsSync(
+      join(demoRepository, ".commitron-demo", "scenario-runner.ts"),
+    ) &&
+      readFileSync(join(demoRepository, "package.json"), "utf8").includes(
+        "commitron demo scenario",
+      ),
   );
 
   scenario("commit");
@@ -99,16 +113,28 @@ try {
   writeFileSync(join(unsafeTarget, "keep.txt"), "do not overwrite\n");
   const unsafeAttempt = spawnSync(process.execPath, [
     "run",
-    "scripts/prepare-demo-repo.ts",
+    sourceCli,
+    "demo",
+    "prepare",
     unsafeTarget,
   ], {
-    cwd: process.cwd(),
+    cwd: projectRoot,
     encoding: "utf8",
   });
   check(
     "Demo generator refuses non-empty directories",
     unsafeAttempt.status !== 0 &&
       /new or completely empty/.test(`${unsafeAttempt.stdout}${unsafeAttempt.stderr}`),
+  );
+
+  const emptyTarget = join(testRoot, "existing-empty-directory");
+  mkdirSync(emptyTarget);
+  const emptyTargetInode = statSync(emptyTarget).ino;
+  prepare(emptyTarget);
+  check(
+    "Demo generator preserves an existing empty directory",
+    statSync(emptyTarget).ino === emptyTargetInode &&
+      existsSync(join(emptyTarget, "DEMO_GUIDE.md")),
   );
 } finally {
   rmSync(testRoot, { recursive: true, force: true });
@@ -118,8 +144,27 @@ console.log(failures ? `\n${failures} FAILED` : "\ndemo repository OK");
 process.exit(failures ? 1 : 0);
 
 function scenario(name: string): void {
-  execFileSync(process.execPath, ["run", "demo:scenario", name], {
+  execFileSync(process.execPath, [
+    "run",
+    sourceCli,
+    "demo",
+    "scenario",
+    name,
+  ], {
     cwd: demoRepository,
+    stdio: "ignore",
+  });
+}
+
+function prepare(target: string): void {
+  execFileSync(process.execPath, [
+    "run",
+    sourceCli,
+    "demo",
+    "prepare",
+    target,
+  ], {
+    cwd: projectRoot,
     stdio: "ignore",
   });
 }

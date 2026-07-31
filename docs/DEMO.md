@@ -19,23 +19,18 @@ or break this project.
 
 ## Prepare once before presentation day
 
-Open a terminal in the Commitron source project and run:
+Install Commitron globally once, then create the demo from any folder:
 
 ```bash
-bun run demo:prepare -- ../commitron-university-demo
+npm install --global @lamisin/commitron
+commitron demo prepare ../commitron-university-demo
 cd ../commitron-university-demo
 ```
 
-If `commitron` is installed globally, the app starts with:
+The app starts with:
 
 ```bash
 commitron
-```
-
-If the terminal says `command not found`, use:
-
-```bash
-bun run /Users/tahsin/Workstation/lamisa-work/commitron/src/cli.tsx
 ```
 
 ### Turn on live mode
@@ -61,7 +56,7 @@ Do not show or read the complete API key to the audience.
 From the generated repository:
 
 ```bash
-bun run demo:scenario ask
+commitron demo scenario ask
 ```
 
 Start Commitron and open **Ask**.
@@ -130,7 +125,7 @@ Press Esc to return home, then `q` to close Commitron.
 ### Prepare
 
 ```bash
-bun run demo:scenario commit
+commitron demo scenario commit
 ```
 
 Start Commitron and open **Commit**. Wait while it reads the files and proposes a
@@ -167,7 +162,7 @@ Close Commitron with Esc, then `q`.
 ### Prepare
 
 ```bash
-bun run demo:scenario branch
+commitron demo scenario branch
 ```
 
 Start Commitron, open **Branch**, and type:
@@ -192,7 +187,7 @@ Close Commitron with Esc, then `q`.
 ### Prepare
 
 ```bash
-bun run demo:scenario explain
+commitron demo scenario explain
 ```
 
 Start Commitron and open **Explain**.
@@ -224,7 +219,7 @@ Close Commitron with Esc, then `q`.
 Close Commitron and run:
 
 ```bash
-bun run demo:scenario fix-error
+commitron demo scenario fix-error
 git push
 ```
 
@@ -264,17 +259,17 @@ If anything looks wrong, close Commitron with Esc and `q`, then prepare the curr
 part again:
 
 ```bash
-bun run demo:scenario ask
-bun run demo:scenario commit
-bun run demo:scenario branch
-bun run demo:scenario explain
-bun run demo:scenario fix-error
+commitron demo scenario ask
+commitron demo scenario commit
+commitron demo scenario branch
+commitron demo scenario explain
+commitron demo scenario fix-error
 ```
 
 To return to a completely clean project:
 
 ```bash
-bun run demo:reset
+commitron demo reset
 ```
 
 These commands discard changes only inside this generated demo repository. They
@@ -284,13 +279,14 @@ first check the safety marker and confirm they are at the exact Git root.
 
 ### `commitron: command not found`
 
-Use:
+Install the published package globally, then check that the binary is available:
 
 ```bash
-bun run /Users/tahsin/Workstation/lamisa-work/commitron/src/cli.tsx
+npm install --global @lamisin/commitron
+commitron --help
 ```
 
-### `Script not found "demo:scenario"`
+### Commitron says this is not a generated demo repository
 
 You are probably in the wrong folder. Run:
 

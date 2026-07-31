@@ -1,6 +1,6 @@
 {
   "name": "commitron",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "Commitron — AI-Powered Git Commit & Branch Assistant (TUI prototype)",
   "private": true,
   "license": "MIT",
@@ -19,7 +19,7 @@
   "scripts": {
     "start": "bun run src/cli.tsx",
     "start:node": "tsx src/cli.tsx",
-    "demo:prepare": "bun run scripts/prepare-demo-repo.ts",
+    "demo:prepare": "bun run src/cli.tsx demo prepare",
     "dev": "bun run src/cli.tsx",
     "check": "bunx tsc --noEmit",
     "verify": "bun run check && bun run smoke",
