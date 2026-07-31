@@ -1,5 +1,12 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -32,6 +39,21 @@ try {
   check(
     "Demo generator creates baseline history",
     git(["tag", "--list", "demo/base"]).trim() === "demo/base",
+  );
+  check(
+    "Demo generator copies the canonical guide",
+    existsSync(join(demoRepository, "DEMO_GUIDE.md")) &&
+      readFileSync(join(demoRepository, "DEMO_GUIDE.md"), "utf8").includes(
+        "Part 5 — Fix Error",
+      ),
+  );
+  check(
+    "Demo generator copies the presenter cheat sheet",
+    existsSync(join(demoRepository, "DEMO_CHEATSHEET.md")) &&
+      readFileSync(
+        join(demoRepository, "DEMO_CHEATSHEET.md"),
+        "utf8",
+      ).includes("Keep this file open during the presentation"),
   );
 
   scenario("commit");

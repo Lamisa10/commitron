@@ -67,6 +67,14 @@ function writeProject(root: string): void {
     writeFileSync(path, contents);
   }
   copyFileSync(
+    join(sourceRoot, "docs", "DEMO.md"),
+    join(root, "DEMO_GUIDE.md"),
+  );
+  copyFileSync(
+    join(sourceRoot, "docs", "DEMO_CHEATSHEET.md"),
+    join(root, "DEMO_CHEATSHEET.md"),
+  );
+  copyFileSync(
     join(import.meta.dir, "demo-repo", "scenario-runner.ts"),
     join(root, ".commitron-demo", "scenario-runner.ts"),
   );

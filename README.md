@@ -74,6 +74,20 @@ If terminal input is unreliable under Bun, use:
 bun run start:node
 ```
 
+## University presentation
+
+Generate a disposable Git repository containing repeatable live scenarios:
+
+```bash
+bun run demo:prepare -- ../commitron-university-demo
+cd ../commitron-university-demo
+```
+
+See the beginner-friendly [presentation script](docs/DEMO.md) for the complete
+walkthrough and the [one-page cheat sheet](docs/DEMO_CHEATSHEET.md) for use during
+the live presentation. The generator copies both files into every new demo
+repository.
+
 ## Controls
 
 - **↑ / ↓** — move through menus
